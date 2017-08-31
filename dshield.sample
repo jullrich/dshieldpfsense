@@ -4,8 +4,8 @@
 apikey = "your api key"
 fromaddr = "your email address (from dshield login)"
 uid = "your dshield numeric userid"
-ccaddr = "optional address to copy reports to for debugging"
-# outside interfaces
+# ccaddr = "optional address to copy reports to for debugging"
+# outside interfaces. you may specify multiple interfaces by delimiting them with a comma
 interfaces="WAN" 
 # set this to 1 to get more debug output
 debug=0

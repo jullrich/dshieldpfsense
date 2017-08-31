@@ -2,4 +2,4 @@
 *.ini
 *.swp
 \#*\#
-.idea/*
+.idea/

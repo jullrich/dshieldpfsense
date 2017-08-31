@@ -26,8 +26,21 @@ $config=$config['dshield'];
 # for debugging, change the 'To' address or add a second address
 $toaddr='reports@dshield.org';
 
-$debug=$config['debug'];
+$debug=(int)($config['debug']);
 $interfaces=split(',',$config['interfaces']);
+
+if ( $config['apikey'] === '' ) {
+ print "An API Key is required. Check dshield.ini\n";
+  exit();
+}
+
+if ( $config['fromaddr'] === '' ) {
+  print "A 'From Address' is required. Check dshield.ini\n";
+}
+
+if ( $config['uid'] === '' ) {
+  print "A DShield UID is required. Check dshield.ini\n";
+}
 
 if ( $debug===1 ) {
     print "interactive/debug mode
@@ -98,7 +111,15 @@ while(!feof($log)) {
             $linesout.=date("Y-m-d H:i:s P",$time)."\t{$config['uid']}\t1\t{$flent['srcip']}\t{$flent['srcport']}\t{$flent['dstip']}\t{$flent['dstport']}\t{$flent['proto']}\t{$flent['tcpflags']}\n";
             $flent='';
             $linecnt++;
+        } else {
+	    if ( $debug === 1 ) {
+	      print "Log is too old $time vs $lastime\n";
+            }
         }
+    } else {
+        if ( $debug === 1 ) {
+        	print "Log was rejected due to wrong interface or flags or because it is ICMP: protocol {$flent['proto']} interface {$flent['interface']} flags {$flent['tcpflags']}\n";
+        } 
     }
 }
 fclose($log);
