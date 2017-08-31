@@ -1,0 +1,11 @@
+# rename this file to dshield.ini after you customize it
+
+[dshield]
+apikey = "your api key"
+fromaddr = "your email address (from dshield login)"
+uid = "your dshield numeric userid"
+ccaddr = "optional address to copy reports to for debugging"
+# outside interfaces
+interfaces="WAN" 
+# set this to 1 to get more debug output
+debug=0
