@@ -2,23 +2,26 @@
 <?php
 
 /**
- *   DShield PFSense Client Version 0.000002
+ *   DShield PFSense Client Version 0.000003
+ *	 https://github.com/jullrich/dshieldpfsense
  *
  *   for questions, please email jullrich - at - sans.edu
  *
  *  Install:
  *
  *   -  copy this file to a location where it is not in the way. E.g. /root/bin/dshieldpfsense.php
- *   -  make the file executable chmod +x /root/bin/dshieldpfense.php
+ *   -  make the file executable chmod +x /root/bin/dshield.php
  *   -  create dshield.ini (see dshield.sample) in the same directory where you keep this file
- *   -  test run: /root/bin/dshieldpfsense.php
- *   -  add to cron (crontab -e ... run twice an hour e.g. 11,41 * * * * /root/bin/dshieldpfsense.php
+ *   -  test run: /root/bin/dshield.php
+ *   -  add to cron (crontab -e ... run twice an hour e.g. 11,41 * * * * /root/bin/dshield.php
  *
  *  In PFSense, you need to have a mail server configured for notifcations. See
  *    Systems->Advanced->Notifcations
  *
  */
 
+#$config_dshield=parse_ini_file("dshield.ini",true);
+#$config=array_merge($config, $config_dshield['dshield']);
 $config=parse_ini_file("dshield.ini",true);
 $config=$config['dshield'];
 
@@ -32,37 +35,56 @@ $interfaces=split(',',$config['interfaces']);
 if ( $config['apikey'] === '' ) {
  print "An API Key is required. Check dshield.ini\n";
   exit();
+}else{
+	$apikey=$config['apikey'];
 }
 
 if ( $config['fromaddr'] === '' ) {
   print "A 'From Address' is required. Check dshield.ini\n";
 }
 
+if ($config['fromaddr'] === '' ) {
+	$from = $config['notifications']['smtp']['fromaddress'];
+} else {
+	$from = $config['fromaddr'];
+}
+
 if ( $config['uid'] === '' ) {
   print "A DShield UID is required. Check dshield.ini\n";
+  exit();
+} else {
+	$uid = $config['uid'];
 }
 
 if ( $debug===1 ) {
     print "interactive/debug mode
 
-   API Key: {$config['apikey']}
-      From: {$config['fromaddr']}
-       UID: {$config['uid']}
+   API Key: $apikey
+      From: $from 
+       UID: $uid 
 Interfaces: ".join(',',$interfaces)."
 ";
 }
 
+if (isset($config['notifications']['smtp']['disable'])) {
+	print "SMTP is disabled under Systems->Advanced->Notifcations\n";
+	exit();
+}
+if (isset($config['notifications']['smtp']['ipaddress'])) {
+	print "No smpt server is defined under Systems->Advanced->Notifications\n";
+	exit();
+}
+
+
 # include some standard libraries
 require_once("globals.inc");
-require_once("sasl.inc");
-require_once("smtp.inc");
 require_once("functions.inc");
 require_once("filter_log.inc");
 
 # figure out local timezone
 $sTZ=date('P');
 # assemble subject line
-$sSubject="FORMAT DSHIELD USERID {$config['uid']} TZ $sTZ AUTHKEY {$config['apikey']} PFSENSE";
+$sSubject="FORMAT DSHIELD USERID $uid TZ $sTZ AUTHKEY $apikey PFSENSE";
 
 # initialize variables
 $linecnt=0;
@@ -81,7 +103,7 @@ if ( file_exists('/var/run/dshieldlastts') ) {
     }
 } else {
     if ( $debug === 1 ) {
-        print "could not find /var/run/dsheidllastts . Running for the first time?\n";
+        print "could not find /var/run/dshieldlastts . Running for the first time?\n";
     }
 }
 
@@ -145,40 +167,125 @@ file_put_contents('/var/run/dshieldlastts',$time);
 # sending log via email
 #
 
-$smtp=new smtp_class;
-$smtp->host_name=$config['notifications']['smtp']['ipaddress'];
-$smtp->host_port = empty($config['notifications']['smtp']['port']) ? 25 : $config['notifications']['smtp']['port'];
-$smtp->direct_delivery = 0;
-$smtp->ssl = (isset($config['notifications']['smtp']['ssl'])) ? 1 : 0;
-$smtp->tls = (isset($config['notifications']['smtp']['tls'])) ? 1 : 0;
-$smtp->debug = 0;
-$smtp->html_debug = 0;
-$smtp->localhost=$config['system']['hostname'].".".$config['system']['domain'];
-if($config['notifications']['smtp']['username'] &&
-    $config['notifications']['smtp']['password']) {
-    if (isset($config['notifications']['smtp']['authentication_mechanism'])) {
-        $smtp->authentication_mechanism = $config['notifications']['smtp']['authentication_mechanism'];
-    } else {
-        $smtp->authentication_mechanism = "PLAIN";
-    }
-    $smtp->user = $config['notifications']['smtp']['username'];
-    $smtp->password = $config['notifications']['smtp']['password'];
-}
 
-$headers = array(
-    "From: {$config['fromaddr']}",
-    "To: {$config['toaddr']}",
-    "Subject: {$sSubject}",
-    "Date: ".date("r")
-);
+	$headers = array(
+		"From"    => $from,
+		"To"      => $toaddr,
+		"Subject" => $sSubject,
+		"Date"    => date("r")
+	);
+
+
 if ( $config['ccaddr'] !='' ) {
     array_push($headers,'CC: '.$config['ccaddr']);
 }
+
 file_put_contents("/tmp/lastdshieldlog",$linesout);
-if($smtp->SendMessage($config['fromaddr'], array($config['toaddr']), $headers, $linesout)) {
-    log_error(sprintf(gettext("%d lines sent to DShield OK"), $linecnt));
-    print "send $linecnt lines to DShield OK\n";
-} else {
-    log_error(sprintf(gettext('Could not send DShield logs to %1$s -- Error: %2$s'), $toaddr, $smtp->error));
-    print "could not send $linecnt lines to DShield ERROR\n";
+
+
+if ( $config['version']>=16 ) {
+		//pfsense 2.4
+		if(send_smtp_message_24()) {
+                log_error(sprintf(gettext("%d lines sent to DShield OK"), $linecnt));
+		        print "send $linecnt lines to DShield OK\n";
+		}
+}else{
+		//pfsense 2.3 and below
+		send_smtp_message_23();
 }
+##### fork from /etc/inc/notices.inc		
+function send_smtp_message_24() {
+	global $config, $g, $from, $toaddr, $headers, $linesout ;
+	require_once("Mail.php");
+
+
+	if (empty($config['notifications']['smtp']['username']) ||
+	    empty($config['notifications']['smtp']['password'])) {
+		$auth = false;
+		$username = '';
+		$password = '';
+	} else {
+		$auth = isset($config['notifications']['smtp']['authentication_mechanism'])
+		    ? $config['notifications']['smtp']['authentication_mechanism']
+		    : 'PLAIN';
+		$username = $config['notifications']['smtp']['username'];
+		$password = $config['notifications']['smtp']['password'];
+	}
+	$params = array(
+		'host' => (isset($config['notifications']['smtp']['ssl'])
+		    ? 'ssl://'
+		    : '')
+		    . $config['notifications']['smtp']['ipaddress'],
+		'port' => empty($config['notifications']['smtp']['port'])
+		    ? 25
+		    : $config['notifications']['smtp']['port'],
+		'auth' => $auth,
+		'username' => $username,
+		'password' => $password,
+		'localhost' => $config['system']['hostname'] . "." .
+		    $config['system']['domain'],
+		'timeout' => !empty($config['notifications']['smtp']['timeout'])
+		    ? $config['notifications']['smtp']['timeout']
+		    : 20,
+		'debug' => false,
+		'persist' => false
+	);
+	        
+			if ( $debug === 1 ) {
+        		print_r($headers);
+				print_r($params);	
+        } 
+		
+			   
+	$smtp =& Mail::factory('smtp', $params);
+	$mail = $smtp->send($toaddr, $headers, $linesout);
+	if (PEAR::isError($mail)) {
+		$err_msg = sprintf(gettext(
+		    'Could not send the message to %1$s -- Error: %2$s'),
+		    $toaddr, $mail->getMessage());
+		print $err_msg;
+		log_error($err_msg);
+		return($err_msg);
+	}
+
+	return;
+
+}
+
+
+function send_smtp_message_23() {
+	global $config, $g, $from, $toaddr, $headers, $linesout, $linecnt ;
+	require_once("sasl.inc");
+	require_once("smtp.inc");
+	
+	$smtp=new smtp_class;
+	$smtp->host_name=$config['notifications']['smtp']['ipaddress'];
+	$smtp->host_port = empty($config['notifications']['smtp']['port']) ? 25 : $config['notifications']['smtp']['port'];
+	$smtp->direct_delivery = 0;
+	$smtp->ssl = (isset($config['notifications']['smtp']['ssl'])) ? 1 : 0;
+	$smtp->tls = (isset($config['notifications']['smtp']['tls'])) ? 1 : 0;
+	$smtp->debug = 0;
+	$smtp->html_debug = 0;
+	$smtp->localhost=$config['system']['hostname'].".".$config['system']['domain'];
+	if($config['notifications']['smtp']['username'] &&
+		$config['notifications']['smtp']['password']) {
+		if (isset($config['notifications']['smtp']['authentication_mechanism'])) {
+			$smtp->authentication_mechanism = $config['notifications']['smtp']['authentication_mechanism'];
+		} else {
+			$smtp->authentication_mechanism = "PLAIN";
+		}
+		$smtp->user = $config['notifications']['smtp']['username'];
+		$smtp->password = $config['notifications']['smtp']['password'];
+	}
+	
+	if($smtp->SendMessage($from, $toaddr, $headers, $linesout)) {
+		log_error(sprintf(gettext("%d lines sent to DShield OK"), $linecnt));
+		print "send $linecnt lines to DShield OK\n";
+	} else {
+		log_error(sprintf(gettext('Could not send DShield logs to %1$s -- Error: %2$s'), $toaddr, $smtp->error));
+		print "could not send $linecnt lines to DShield ERROR\n";
+	}
+}
+
+
+?>
