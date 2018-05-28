@@ -20,8 +20,8 @@
  *
  */
 
-#$config_dshield=parse_ini_file("dshield.ini",true);
-#$config=array_merge($config, $config_dshield['dshield']);
+$version='0.000004';
+
 $config=parse_ini_file("dshield.ini",true);
 $config=$config['dshield'];
 
@@ -31,30 +31,35 @@ $toaddr='reports@dshield.org';
 
 $debug=(int)($config['debug']);
 $interfaces=split(',',$config['interfaces']);
-$autorized_source_ip=split(',',$config['autorized_source_ip']);
+$authorized_source_ip=split(',',$config['authorized_source_ip']);
 
-if ( $config['apikey'] === '' ) {
- print "An API Key is required. Check dshield.ini\n";
+if ( $config['apikey'] == '' ) {
+  print "An API Key is required. Check dshield.ini\n";
   exit();
 }else{
-	$apikey=$config['apikey'];
+  $apikey=$config['apikey'];
 }
 
-if ( $config['fromaddr'] === '' ) {
+if ( $config['fromaddr'] == '' ) {
   print "A 'From Address' is required. Check dshield.ini\n";
+  exit();
 }
 
-if ($config['fromaddr'] === '' ) {
-	$from = $config['notifications']['smtp']['fromaddress'];
+if ($config['fromaddr'] == '' ) {
+  $from = $config['notifications']['smtp']['fromaddress'];
 } else {
-	$from = $config['fromaddr'];
+  $from = $config['fromaddr'];
 }
-
-if ( $config['uid'] === '' ) {
+# some older versions used userid instead of uid. allowing for both.
+if ( $config['uid'] == '' && $config['userid'] == '' ) {
   print "A DShield UID is required. Check dshield.ini\n";
   exit();
 } else {
-	$uid = $config['uid'];
+  if ( $config['uid'] == '' )  {
+    $uid=$config['userid'];
+  } else {
+    $uid = $config['uid'];
+  }
 }
 
 if ( $debug===1 ) {
@@ -79,13 +84,15 @@ if (isset($config['notifications']['smtp']['ipaddress'])) {
 
 # include some standard libraries
 require_once("globals.inc");
+require_once("sasl.inc");
+require_once("smtp.inc");
 require_once("functions.inc");
 require_once("filter_log.inc");
 
 # figure out local timezone
 $sTZ=date('P');
 # assemble subject line
-$sSubject="FORMAT DSHIELD USERID $uid TZ $sTZ AUTHKEY $apikey PFSENSE";
+$sSubject="FORMAT DSHIELD USERID $uid TZ $sTZ AUTHKEY $apikey PFSENSE $version";
 
 # initialize variables
 $linecnt=0;
@@ -127,7 +134,7 @@ while(!feof($log)) {
 # eliminating ICMP (we don't log that) and TCP with FA and RA flags as these are usually false positives, as well as A and R
 # do not send self blocked lines nor IPV6
 	
-    if ($flent['version'] == '4' && in_array($flent['srcip'],$autorized_source_ip) == false && $flent != "" && in_array($flent['interface'],$interfaces) && $flent['proto']!='ICMP' && $flent['tcpflags']!='FA' && $flent['tcpflags']!='RA'  && $flent['tcpflags'] != 'SA' && $flent['tcpflags']!='A'  && $flent['tcpflags']!='R' ) {
+    if ($flent['version'] == '4' && in_array($flent['srcip'],$authorized_source_ip) == false && $flent != "" && in_array($flent['interface'],$interfaces) && $flent['proto']!='ICMP' && $flent['tcpflags']!='FA' && $flent['tcpflags']!='RA'  && $flent['tcpflags'] != 'SA' && $flent['tcpflags']!='A'  && $flent['tcpflags']!='R' ) {
         $time=strtotime($flent['time']);
 
 # check if this log line is newer then the last one we processesed.
@@ -142,7 +149,7 @@ while(!feof($log)) {
         }
     } else {
         if ( $debug === 1 ) {
-        	print "Log was rejected due to wrong interface or flags or because it is ICMP: protocol {$flent['proto']} interface {$flent['interface']} flags {$flent['tcpflags']}\n";
+        	print "Log was rejected due to wrong interface or flags or because it is ICMP or the IP version is not 4 or the source is our own IP address: protocol {$flent['proto']} interface {$flent['interface']} flags {$flent['tcpflags']} version {$flent['version']} source ip {$flent['srcip']}\n";
         } 
     }
 }
