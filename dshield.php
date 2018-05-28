@@ -2,14 +2,14 @@
 <?php
 
 /**
- *   DShield PFSense Client Version 0.000003
+ *   DShield PFSense Client Version 0.000004
  *	 https://github.com/jullrich/dshieldpfsense
  *
  *   for questions, please email jullrich - at - sans.edu
  *
  *  Install:
  *
- *   -  copy this file to a location where it is not in the way. E.g. /root/bin/dshieldpfsense.php
+ *   -  copy this file to a location where it is not in the way. E.g. /root/bin/dshield.php
  *   -  make the file executable chmod +x /root/bin/dshield.php
  *   -  create dshield.ini (see dshield.sample) in the same directory where you keep this file
  *   -  test run: /root/bin/dshield.php
@@ -31,6 +31,7 @@ $toaddr='reports@dshield.org';
 
 $debug=(int)($config['debug']);
 $interfaces=split(',',$config['interfaces']);
+$autorized_source_ip=split(',',$config['autorized_source_ip']);
 
 if ( $config['apikey'] === '' ) {
  print "An API Key is required. Check dshield.ini\n";
@@ -124,8 +125,9 @@ while(!feof($log)) {
     }
 
 # eliminating ICMP (we don't log that) and TCP with FA and RA flags as these are usually false positives, as well as A and R
-
-    if ($flent != "" && in_array($flent['interface'],$interfaces) && $flent['proto']!='ICMP' && $flent['tcpflags']!='FA' && $flent['tcpflags']!='RA'  && $flent['tcpflags'] != 'SA' && $flent['tcpflags']!='A'  && $flent['tcpflags']!='R' ) {
+# do not send self blocked lines nor IPV6
+	
+    if ($flent['version'] == '4' && in_array($flent['srcip'],$autorized_source_ip) == false && $flent != "" && in_array($flent['interface'],$interfaces) && $flent['proto']!='ICMP' && $flent['tcpflags']!='FA' && $flent['tcpflags']!='RA'  && $flent['tcpflags'] != 'SA' && $flent['tcpflags']!='A'  && $flent['tcpflags']!='R' ) {
         $time=strtotime($flent['time']);
 
 # check if this log line is newer then the last one we processesed.
