@@ -84,8 +84,6 @@ if (isset($config['notifications']['smtp']['ipaddress'])) {
 
 # include some standard libraries
 require_once("globals.inc");
-require_once("sasl.inc");
-require_once("smtp.inc");
 require_once("functions.inc");
 require_once("filter_log.inc");
 
