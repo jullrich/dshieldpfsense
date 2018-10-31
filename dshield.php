@@ -2,7 +2,7 @@
 <?php
 
 /**
- *   DShield PFSense Client Version 0.000004
+ *   DShield PFSense Client Version 0.000005
  *	 https://github.com/jullrich/dshieldpfsense
  *
  *   for questions, please email jullrich - at - sans.edu
@@ -20,7 +20,7 @@
  *
  */
 
-$version='0.000004';
+$version='0.000005'; # for pfsense 2.4.4 / php7
 
 $config=parse_ini_file("dshield.ini",true);
 $config=$config['dshield'];
@@ -30,8 +30,8 @@ $config=$config['dshield'];
 $toaddr='reports@dshield.org';
 
 $debug=(int)($config['debug']);
-$interfaces=split(',',$config['interfaces']);
-$authorized_source_ip=split(',',$config['authorized_source_ip']);
+$interfaces=explode(',',$config['interfaces']);
+$authorized_source_ip=explode(',',$config['authorized_source_ip']);
 
 if ( $config['apikey'] == '' ) {
   print "An API Key is required. Check dshield.ini\n";
@@ -62,7 +62,7 @@ if ( $config['uid'] == '' && $config['userid'] == '' ) {
   }
 }
 
-if ( $debug===1 ) {
+if ( $debug === 1 ) {
     print "interactive/debug mode
 
    API Key: $apikey
@@ -84,8 +84,6 @@ if (isset($config['notifications']['smtp']['ipaddress'])) {
 
 # include some standard libraries
 require_once("globals.inc");
-require_once("sasl.inc");
-require_once("smtp.inc");
 require_once("functions.inc");
 require_once("filter_log.inc");
 
@@ -98,9 +96,8 @@ $sSubject="FORMAT DSHIELD USERID $uid TZ $sTZ AUTHKEY $apikey PFSENSE $version";
 $linecnt=0;
 $lasttime=0;
 
-if ( $debug===1 ) {
-    print "
-Subject: $sSubject\n";
+if ( $debug === 1 ) {
+    print "Subject: $sSubject\n";
 }
 
 # check when we ran last.
@@ -121,7 +118,7 @@ $linesout='';
 while(!feof($log)) {
     $line = fgets($log);
     $line = rtrim($line);
-    if ( $debug===1 ) {
+    if ( $debug === 1 ) {
         print "Reading $line\n";
     }
 # the name of this function changed in Pfsense 2.3
@@ -176,6 +173,10 @@ file_put_contents('/var/run/dshieldlastts',$time);
 # sending log via email
 #
 
+if ( $config['ccaddr'] !== '' ) {
+	#The recipient field dictates where the mail goes, the headers dictate what is displayed
+	$toaddr = $toaddr ."," .$config['ccaddr'];
+}
 
 	$headers = array(
 		"From"    => $from,
@@ -184,10 +185,6 @@ file_put_contents('/var/run/dshieldlastts',$time);
 		"Date"    => date("r")
 	);
 
-
-if ( $config['ccaddr'] !='' ) {
-    array_push($headers,'CC: '.$config['ccaddr']);
-}
 
 file_put_contents("/tmp/lastdshieldlog",$linesout);
 
