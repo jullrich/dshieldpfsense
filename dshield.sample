@@ -10,4 +10,4 @@ interfaces="WAN"
 # set this to 1 to get more debug output
 debug=0
 #prevent auto ban ...
-autorized_source_ip="172.16.0.60,10.0.0.100"
+authorized_source_ip="172.16.0.60,10.0.0.100"
