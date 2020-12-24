@@ -174,6 +174,9 @@ file_put_contents('/var/run/dshieldlastts',$time);
 # sending log via email
 #
 
+if ( $config['ccaddr'] !== '' ) {
+ 	$toaddr = $toaddr ."," .$config['ccaddr'];
+ }
 
 	$headers = array(
 		"From"    => $from,
@@ -181,11 +184,6 @@ file_put_contents('/var/run/dshieldlastts',$time);
 		"Subject" => $sSubject,
 		"Date"    => date("r")
 	);
-
-
-if ( $config['ccaddr'] !='' ) {
-    array_push($headers,'CC: '.$config['ccaddr']);
-}
 
 file_put_contents("/tmp/lastdshieldlog",$linesout);
 
