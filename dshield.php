@@ -2,7 +2,7 @@
 <?php
 
 /**
- *   DShield PFSense Client Version 0.000004
+ *   DShield PFSense Client Version 0.000005
  *	 https://github.com/jullrich/dshieldpfsense
  *
  *   for questions, please email jullrich - at - sans.edu
@@ -20,7 +20,7 @@
  *
  */
 
-$version='0.000004';
+$version='0.000005';
 
 $config=parse_ini_file("dshield.ini",true);
 $config=$config['dshield'];
@@ -77,7 +77,7 @@ if (isset($config['notifications']['smtp']['disable'])) {
 	exit();
 }
 if (isset($config['notifications']['smtp']['ipaddress'])) {
-	print "No smpt server is defined under Systems->Advanced->Notifications\n";
+	print "No SMTP server is defined under Systems->Advanced->Notifications\n";
 	exit();
 }
 
@@ -85,7 +85,7 @@ if (isset($config['notifications']['smtp']['ipaddress'])) {
 # include some standard libraries
 require_once("globals.inc");
 require_once("functions.inc");
-require_once("filter_log.inc");
+require_once("filter.inc"); // In pfSense 2.5, filter_log.inc was renamed to filter.inc
 
 # figure out local timezone
 $sTZ=date('P');
