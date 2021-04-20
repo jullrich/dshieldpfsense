@@ -1,7 +1,7 @@
 # DShield PFSense Client
 Convert pfsense firewall logs into dshield format for ingesting them into the dshield project
 
-This script *should* work in pfsense 2.2 and 2.3 but only has been tested currently with the most recent version (2.3.4-RELEASE-p1). It does **NEED** email configured on the pfsense notification setup. To adjust it, see System->Advanced->Notifications and the e-mail section.
+This script *should* work in pfsense 2.2 and 2.3 but only has been tested currently with the most recent 2.5.x releases as well as 2.3.4-RELEASE-p1. It does **NEED** email configured on the pfsense notification setup. To adjust it, see System->Advanced->Notifications and the e-mail section.
 
 ## Get the log converter script
 Place this PHP script in a convenient location ie: `/root/bin/dshieldpfsense.php`
@@ -42,6 +42,12 @@ chmod 770 /root/bin/dshieldpfsense.php/
 
 ## Debugging
 You will see messages left by the script in the system.log. To review, use:
+
+```
+cat /var/log/system.log | grep dshield
+```
+
+or, if running on a version before 2.5.0:
 
 ```
 clog /var/log/system.log | grep dshield
