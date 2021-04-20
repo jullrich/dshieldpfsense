@@ -12,7 +12,7 @@ Place this PHP script in a convenient location ie: `/root/bin/dshieldpfsense.php
   - ```curl https://raw.githubusercontent.com/jullrich/dshieldpfsense/master/dshield.php > /root/bin/dshieldpfsense.php```
 
 ## Editing necessary variables
-Before running it, modify the file to add the email address and the API key for your DShield account. You can find the API key here: https://www.dshield.org/myaccount.html
+Before running it, create the configuration file `dshield.ini` in the same location as the PHP script. Use `dshield.sample` as a template and customize settings as you wish.  At a minimum, you will need to use the email address and the API key for your DShield account. You can find the API key here: https://www.dshield.org/myaccount.html
 
 ```
 $authkey='--- insert authkey here. see dhsield.org/myaccount.html ---';
@@ -30,6 +30,19 @@ You need to know the alias name of your WAN interface. This can viewed at https:
 <p align="left">
   <img src="https://github.com/funtimes-ninja/dshieldpfsense/raw/master/images/interface.png" width="350"/>
 </p>
+
+## Excluding IP addresses and/or ports from reports
+If you wish, you can exclude certain source / target IP addresses (IPv4 only for now) and/or ports from being reported. To do that, uncomment one or more of the lines below :
+
+```
+#source_exclude=/root/etc/dshield-source-exclude.lst
+#source_port_exclude=/root/etc/dshield-source-port-exclude.lst
+#target_exclude=/root/etc/dshield-target-exclude.lst
+#target_port_exclude=/root/etc/dshield-target-port-exclude.lst
+```
+
+and edit the relevant file so it contains the exclusions you want. Lines starting with a `#` are regarded as comments and ignored; otherwise, each should specify either a single address (port) or a range of addresses (ports). Additionally, IP addresses should be specified using either CIDR notation (eg, `10.1.0.0/16`), a range (eg, `10.1.0.0 - 10.1.255.255`), or a single address (eg, `10.1.2.3`).
+
 
 ## Ensure the script is executable
 ```
