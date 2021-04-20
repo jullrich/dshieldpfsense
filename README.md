@@ -6,7 +6,7 @@ This script *should* work in pfsense 2.2 and 2.3 but only has been tested curren
 ## Get the log converter script
 Place this PHP script in a convenient location ie: `/root/bin/dshieldpfsense.php`
 
-1. You can copy & paste the contents of the php script if you have an SSH session on your pfsesne box.
+1. You can copy & paste the contents of the php script if you have an SSH session on your pfsense box.
 2. Another approach would be to scp the file to the server. If you want to use scp, remember that you must scp as root and not admin.      The admin account does not have privileges to put files on the system.
 3. You can curl the script onto the pfsense box.
   - ```curl https://raw.githubusercontent.com/jullrich/dshieldpfsense/master/dshield.php > /root/bin/dshieldpfsense.php```
