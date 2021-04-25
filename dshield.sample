@@ -11,3 +11,8 @@ interfaces="WAN"
 debug=0
 #prevent auto ban ...
 authorized_source_ip="172.16.0.60,10.0.0.100"
+# Filter output by source / target and ip / port if desired.
+#source_exclude=/root/etc/dshield-source-exclude.lst
+#source_port_exclude=/root/etc/dshield-source-port-exclude.lst
+#target_exclude=/root/etc/dshield-target-exclude.lst
+#target_port_exclude=/root/etc/dshield-target-port-exclude.lst

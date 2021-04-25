@@ -81,6 +81,27 @@ if (isset($config['notifications']['smtp']['ipaddress'])) {
 	exit();
 }
 
+$src_exc_lo = array();
+$src_exc_hi = array();
+if ($config['source_exclude']) {
+  load_excludes($config['source_exclude'], $src_exc_lo, $src_exc_hi, True);
+}
+$tgt_exc_lo = array();
+$tgt_exc_hi = array();
+if ($config['target_exclude']) {
+  load_excludes($config['target_exclude'], $tgt_exc_lo, $tgt_exc_hi, True);
+}
+$src_port_exc_lo = array();
+$src_port_exc_hi = array();
+if ($config['source_port_exclude']) {
+  load_excludes($config['source_port_exclude'], $src_port_exc_lo, $src_port_exc_hi, False);
+}
+$tgt_port_exc_lo = array();
+$tgt_port_exc_hi = array();
+if ($config['target_port_exclude']) {
+  load_excludes($config['target_port_exclude'], $tgt_port_exc_lo, $tgt_port_exc_hi, False);
+}
+
 
 # include some standard libraries
 require_once("globals.inc");
@@ -137,6 +158,30 @@ while(!feof($log)) {
 
 # check if this log line is newer then the last one we processesed.
         if ( $time>$lasttime) {
+            if (test_IP_exclude($src_exc_lo, $src_exc_hi, $flent['srcip'])) {
+              if ($debug === 1) {
+                print $flent['srcip'] . " is in a source ip exclusion block.\n";
+              }
+              continue;
+            }
+            if (test_IP_exclude($tgt_exc_lo, $tgt_exc_hi, $flent['dstip'])) {
+              if ($debug === 1) {
+                print $flent['dstip'] . " is in a target ip exclusion block.\n";
+              }
+              continue;
+            }
+            if (test_port_exclude($src_port_exc_lo, $src_port_exc_hi, $flent['srcport'])) {
+              if ($debug === 1) {
+                print $flent['srcport'] . " is in a source port exclusion block.\n";
+              }
+              continue;
+            }
+            if (test_port_exclude($tgt_port_exc_lo, $tgt_port_exc_hi, $flent['dstport'])) {
+              if ($debug === 1) {
+                print $flent['dstport'] . " is in a target port exclusion block.\n";
+              }
+              continue;
+            }
             $linesout.=date("Y-m-d H:i:s P",$time)."\t{$config['uid']}\t1\t{$flent['srcip']}\t{$flent['srcport']}\t{$flent['dstip']}\t{$flent['dstport']}\t{$flent['proto']}\t{$flent['tcpflags']}\n";
             $flent='';
             $linecnt++;
@@ -290,6 +335,135 @@ function send_smtp_message_23() {
 		log_error(sprintf(gettext('Could not send DShield logs to %1$s -- Error: %2$s'), $toaddr, $smtp->error));
 		print "could not send $linecnt lines to DShield ERROR\n";
 	}
+}
+
+
+function load_excludes($exc_file, &$arr_lo, &$arr_hi, $is_ip) {
+  global $debug;
+  if (!file_exists($exc_file)) {
+    log_error(sprintf(gettext("Exclude file '%s' does not exist."), $exc_file));
+    exit();
+  }
+
+  if ($debug===1) {
+      print "load_excludes: reading excludes from $exc_file.\n";
+  }
+
+  $fh = fopen($exc_file,"r");
+  if ($fh) {
+    while (($line = fgets($fh)) !== false) {
+      $line = trim($line);
+      if (preg_match("/^\s*#/", $line) || preg_match("/^\s*$/", $line)) {
+        continue;
+      }
+      if ($debug===1) {
+        print "load_excludes:   line=>>$line<<\n";
+      }
+      # 127.0.0.0/8 format
+      if (strstr($line, "/")) {
+        $parts = explode("/", $line);
+        $lo = $parts[0];
+
+        # nb: the following code block is from https://www.php.net/manual/en/ref.network.php
+        $lo_bin = str_pad(decbin(ip2long($lo)), 32, "0", STR_PAD_LEFT);
+        $netmask_bin = str_pad(str_repeat("1", (integer)$parts[1]), 32, "0", STR_PAD_RIGHT);
+
+        $hi_bin = ""; 
+        for ($i = 0; $i < 32; $i++) {
+          if ($netmask_bin[$i] == "1")
+            $hi_bin .= $lo_bin[$i];
+          else
+            $hi_bin .= "1";
+        }
+        $hi = long2ip(bindec($hi_bin));
+      } else {
+      # 127.0.0.0 - 127.255.255.255 format
+        $parts = explode("-", $line);
+        $lo = trim($parts[0]);
+        if (count($parts) === 1) {
+          $hi = $lo;
+        } else {
+          $hi = trim($parts[1]);
+        }
+      }
+      if ($debug===1) {
+        print "load_excludes:     lo=>>$lo<<; hi=>>$hi<<\n";
+      }
+      if ($is_ip) {
+        if (filter_var($lo, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && filter_var($hi, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+          $arr_lo[] = $lo;
+          $arr_hi[] = $hi;
+        } else {
+          if ($lo != $hi && !filter_var($lo, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && !filter_var($hi, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            log_error(sprintf(gettext("%d and %d are not valid IPv4 addresses!"), $lo, $hi));
+          } else {
+            if (!filter_var($lo, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+              log_error(sprintf(gettext("%d is not a valid IPv4 address!"), $lo));
+            } else {
+              log_error(sprintf(gettext("%d is not a valid IPv4 address!"), $hi));
+            }
+          }
+        }
+      } else {
+        if ((int)($lo) > 0 && (int)($lo) <= 65535 && (int)($hi) > 0 && (int)($hi) <= 65535) {
+          $arr_lo[] = $lo;
+          $arr_hi[] = $hi;
+        } else {
+          if ($lo != $hi && !((int)($lo) > 0 && (int)($lo) <= 65535 && (int)($hi) > 0 && (int)($hi) <= 65535)) {
+            log_error(sprintf(gettext("%d and %d are not valid port numbers!"), $lo, $hi));
+          } else {
+            if ((int)($lo) <= 0 || (int)($lo) > 65535) {
+              log_error(sprintf(gettext("%d is not a valid port number!"), $lo));
+            } else {
+              log_error(sprintf(gettext("%d is not a valid port number!"), $hi));
+            }
+          }
+        }
+      }
+    }
+
+    fclose($fh);
+  } else {
+    log_error(sprintf(gettext("Failed to read exclude file '%s'!"), $exc_file));
+    exit();
+  } 
+}
+
+function test_IP_exclude($arr_lo, $arr_hi, $ip) {
+  global $debug;
+  if ($debug === 1) {
+    print "test_IP_exclude: checking $ip.\n";
+  }
+  $n = count($arr_lo);
+  for ($i=0; $i<$n; $i++) {
+    if ($debug === 1) {
+      print "test_IP_exclude:  against range " . $arr_lo[$i] . " - " . $arr_hi[$i] . ".\n";
+    }
+    $l = ip2long($ip);
+    if ($l >= ip2long($arr_lo[$i]) && $l <= ip2long($arr_hi[$i]))
+    {
+      return True;
+    }
+  }
+  return False;
+}
+
+function test_port_exclude($arr_lo, $arr_hi, $port) {
+  global $debug;
+  if ($debug === 1) {
+    print "test_port_exclude: checking $port.\n";
+  }
+  $n = count($arr_lo);
+  for ($i=0; $i<$n; $i++) {
+    if ($debug === 1) {
+      print "test_port_exclude:  against range " . $arr_lo[$i] . " - " . $arr_hi[$i] . ".\n";
+    }
+    if ((int)($port) >= (int)($arr_lo[$i]) && (int)($port) <= (int)($arr_hi[$i]))
+    {
+      return True;
+    }
+  }
+  return False;
 }
 
 
