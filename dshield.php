@@ -2,7 +2,7 @@
 <?php
 
 /**
- *   DShield PFSense Client Version 0.000005
+ *   DShield PFSense Client Version 0.000006
  *	 https://github.com/jullrich/dshieldpfsense
  *
  *   for questions, please email jullrich - at - sans.edu
@@ -20,7 +20,7 @@
  *
  */
 
-$version='0.000005';
+$version='0.000006';
 
 $config=parse_ini_file("dshield.ini",true);
 $config=$config['dshield'];
@@ -153,7 +153,7 @@ while(!feof($log)) {
 # eliminating ICMP (we don't log that) and TCP with FA and RA flags as these are usually false positives, as well as A and R
 # do not send self blocked lines nor IPV6
 	
-    if ($flent['version'] == '4' && in_array($flent['srcip'],$authorized_source_ip) == false && $flent != "" && in_array($flent['interface'],$interfaces) && $flent['proto']!='ICMP' && $flent['tcpflags']!='FA' && $flent['tcpflags']!='RA'  && $flent['tcpflags'] != 'SA' && $flent['tcpflags']!='A'  && $flent['tcpflags']!='R' ) {
+    if ($flent != "" && $flent['version'] == '4' && in_array($flent['srcip'],$authorized_source_ip) == false && in_array($flent['interface'],$interfaces) && $flent['proto']!='ICMP' && $flent['tcpflags']!='FA' && $flent['tcpflags']!='RA'  && $flent['tcpflags'] != 'SA' && $flent['tcpflags']!='A'  && $flent['tcpflags']!='R' ) {
         $time=strtotime($flent['time']);
 
 # check if this log line is newer then the last one we processesed.
