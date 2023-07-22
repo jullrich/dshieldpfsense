@@ -143,6 +143,11 @@ while(!feof($log)) {
     if ( $debug===1 ) {
         print "Reading $line\n";
     }
+
+    if (preg_match("/logfile turned over due to/", $line)) {
+        continue;
+    }
+
 # the name of this function changed in Pfsense 2.3
     if ( $config['version']>=15 ) {
         $flent = parse_firewall_log_line(trim($line));
