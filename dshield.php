@@ -144,15 +144,18 @@ while(!feof($log)) {
         print "Reading $line\n";
     }
 
-    if (preg_match("/logfile turned over due to/", $line)) {
-        continue;
-    }
-
 # the name of this function changed in Pfsense 2.3
     if ( $config['version']>=15 ) {
         $flent = parse_firewall_log_line(trim($line));
     } else {
         $flent = parse_filter_line(trim($line));
+    }
+# handle failures to parse log line.
+    if ($flent == "") {
+        if ($debug===1) {
+            print "failed to parse line ($line)\n";
+        }
+        continue;
     }
 
 # eliminating ICMP (we don't log that) and TCP with FA and RA flags as these are usually false positives, as well as A and R
