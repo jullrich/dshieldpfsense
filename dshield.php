@@ -243,10 +243,7 @@ file_put_contents("/tmp/lastdshieldlog",$linesout);
 
 if ( $config['version']>=16 ) {
 		//pfsense 2.4
-		if(send_smtp_message_24()) {
-                log_error(sprintf(gettext("%d lines sent to DShield OK"), $linecnt));
-		        print "send $linecnt lines to DShield OK\n";
-		}
+		send_smtp_message_24();
 }else{
 		//pfsense 2.3 and below
 		send_smtp_message_23();
@@ -304,9 +301,11 @@ function send_smtp_message_24() {
 		print $err_msg;
 		log_error($err_msg);
 		return($err_msg);
+	} else {
+		log_error(sprintf(gettext("%d lines sent to DShield OK"), $linecnt));
+		print "send $linecnt lines to DShield OK\n";
+		return;
 	}
-
-	return;
 
 }
 
