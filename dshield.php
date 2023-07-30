@@ -82,7 +82,7 @@ if (isset($config['notifications']['smtp']['disable'])) {
 	print "SMTP is disabled under Systems->Advanced->Notifcations\n";
 	exit();
 }
-if (isset($config['notifications']['smtp']['ipaddress'])) {
+if (!isset($config['notifications']['smtp']['ipaddress'])) {
 	print "No SMTP server is defined under Systems->Advanced->Notifications\n";
 	exit();
 }
