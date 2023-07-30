@@ -143,11 +143,19 @@ while(!feof($log)) {
     if ( $debug===1 ) {
         print "Reading $line\n";
     }
+
 # the name of this function changed in Pfsense 2.3
     if ( $config['version']>=15 ) {
         $flent = parse_firewall_log_line(trim($line));
     } else {
         $flent = parse_filter_line(trim($line));
+    }
+# handle failures to parse log line.
+    if ($flent == "") {
+        if ($debug===1) {
+            print "failed to parse line ($line)\n";
+        }
+        continue;
     }
 
 # eliminating ICMP (we don't log that) and TCP with FA and RA flags as these are usually false positives, as well as A and R
@@ -235,17 +243,14 @@ file_put_contents("/tmp/lastdshieldlog",$linesout);
 
 if ( $config['version']>=16 ) {
 		//pfsense 2.4
-		if(send_smtp_message_24()) {
-                log_error(sprintf(gettext("%d lines sent to DShield OK"), $linecnt));
-		        print "send $linecnt lines to DShield OK\n";
-		}
+		send_smtp_message_24();
 }else{
 		//pfsense 2.3 and below
 		send_smtp_message_23();
 }
 ##### fork from /etc/inc/notices.inc		
 function send_smtp_message_24() {
-	global $config, $g, $from, $toaddr, $headers, $linesout ;
+	global $config, $g, $from, $toaddr, $headers, $linesout, $linecnt ;
 	require_once("Mail.php");
 
 
@@ -296,9 +301,11 @@ function send_smtp_message_24() {
 		print $err_msg;
 		log_error($err_msg);
 		return($err_msg);
+	} else {
+		log_error(sprintf(gettext("%d lines sent to DShield OK"), $linecnt));
+		print "send $linecnt lines to DShield OK\n";
+		return;
 	}
-
-	return;
 
 }
 
