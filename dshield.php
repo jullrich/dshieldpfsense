@@ -250,7 +250,7 @@ if ( $config['version']>=16 ) {
 }
 ##### fork from /etc/inc/notices.inc		
 function send_smtp_message_24() {
-	global $config, $g, $from, $toaddr, $headers, $linesout ;
+	global $config, $g, $from, $toaddr, $headers, $linesout, $linecnt ;
 	require_once("Mail.php");
 
 
