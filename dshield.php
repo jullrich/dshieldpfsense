@@ -22,43 +22,49 @@
 
 $version='0.000006';
 
-$config=parse_ini_file("dshield.ini",true);
-$config=$config['dshield'];
+# include some standard libraries
+require_once("globals.inc");
+require_once("functions.inc");
+require_once("filter.inc"); // In pfSense 2.5, filter_log.inc was renamed to filter.inc
+
+
+$dshield_config=parse_ini_file("dshield.ini",true);
+$dshield_config=$dshield_config['dshield'];
 
 
 # for debugging, change the 'To' address or add a second address
 $toaddr='reports@dshield.org';
 
-$debug=(int)($config['debug']);
-$interfaces=explode(',',$config['interfaces']);
-$authorized_source_ip=explode(',',$config['authorized_source_ip']);
+$debug=(int)($dshield_config['debug']);
+$interfaces=explode(',',$dshield_config['interfaces']);
+$authorized_source_ip=explode(',',$dshield_config['authorized_source_ip']);
 
-if ( $config['apikey'] == '' ) {
+if ( $dshield_config['apikey'] == '' ) {
   print "An API Key is required. Check dshield.ini\n";
   exit();
 }else{
-  $apikey=$config['apikey'];
+  $apikey=$dshield_config['apikey'];
 }
 
-if ( $config['fromaddr'] == '' ) {
+if ($dshield_config['fromaddr'] == '' ) {
+  $from = $config['notifications']['smtp']['fromaddress'];
+} else {
+  $from = $dshield_config['fromaddr'];
+}
+if ( $from == '' ) {
   print "A 'From Address' is required. Check dshield.ini\n";
   exit();
 }
 
-if ($config['fromaddr'] == '' ) {
-  $from = $config['notifications']['smtp']['fromaddress'];
-} else {
-  $from = $config['fromaddr'];
-}
 # some older versions used userid instead of uid. allowing for both.
-if ( $config['uid'] == '' && $config['userid'] == '' ) {
+if ( $dshield_config['uid'] == '' && $dshield_config['userid'] == '' ) {
   print "A DShield UID is required. Check dshield.ini\n";
   exit();
 } else {
-  if ( $config['uid'] == '' )  {
-    $uid=$config['userid'];
+  if ( $dshield_config['uid'] == '' )  {
+    $uid=$dshield_config['userid'];
   } else {
-    $uid = $config['uid'];
+    $uid = $dshield_config['uid'];
   }
 }
 
@@ -76,37 +82,32 @@ if (isset($config['notifications']['smtp']['disable'])) {
 	print "SMTP is disabled under Systems->Advanced->Notifcations\n";
 	exit();
 }
-if (isset($config['notifications']['smtp']['ipaddress'])) {
+if (!isset($config['notifications']['smtp']['ipaddress'])) {
 	print "No SMTP server is defined under Systems->Advanced->Notifications\n";
 	exit();
 }
 
 $src_exc_lo = array();
 $src_exc_hi = array();
-if ($config['source_exclude']) {
-  load_excludes($config['source_exclude'], $src_exc_lo, $src_exc_hi, True);
+if ($dshield_config['source_exclude']) {
+  load_excludes($dshield_config['source_exclude'], $src_exc_lo, $src_exc_hi, True);
 }
 $tgt_exc_lo = array();
 $tgt_exc_hi = array();
-if ($config['target_exclude']) {
-  load_excludes($config['target_exclude'], $tgt_exc_lo, $tgt_exc_hi, True);
+if ($dshield_config['target_exclude']) {
+  load_excludes($dshield_config['target_exclude'], $tgt_exc_lo, $tgt_exc_hi, True);
 }
 $src_port_exc_lo = array();
 $src_port_exc_hi = array();
-if ($config['source_port_exclude']) {
-  load_excludes($config['source_port_exclude'], $src_port_exc_lo, $src_port_exc_hi, False);
+if ($dshield_config['source_port_exclude']) {
+  load_excludes($dshield_config['source_port_exclude'], $src_port_exc_lo, $src_port_exc_hi, False);
 }
 $tgt_port_exc_lo = array();
 $tgt_port_exc_hi = array();
-if ($config['target_port_exclude']) {
-  load_excludes($config['target_port_exclude'], $tgt_port_exc_lo, $tgt_port_exc_hi, False);
+if ($dshield_config['target_port_exclude']) {
+  load_excludes($dshield_config['target_port_exclude'], $tgt_port_exc_lo, $tgt_port_exc_hi, False);
 }
 
-
-# include some standard libraries
-require_once("globals.inc");
-require_once("functions.inc");
-require_once("filter.inc"); // In pfSense 2.5, filter_log.inc was renamed to filter.inc
 
 # figure out local timezone
 $sTZ=date('P');
@@ -190,7 +191,7 @@ while(!feof($log)) {
               }
               continue;
             }
-            $linesout.=date("Y-m-d H:i:s P",$time)."\t{$config['uid']}\t1\t{$flent['srcip']}\t{$flent['srcport']}\t{$flent['dstip']}\t{$flent['dstport']}\t{$flent['proto']}\t{$flent['tcpflags']}\n";
+            $linesout.=date("Y-m-d H:i:s P",$time)."\t{$dshield_config['uid']}\t1\t{$flent['srcip']}\t{$flent['srcport']}\t{$flent['dstip']}\t{$flent['dstport']}\t{$flent['proto']}\t{$flent['tcpflags']}\n";
             $flent='';
             $linecnt++;
         } else {
@@ -227,8 +228,8 @@ file_put_contents('/var/run/dshieldlastts',$time);
 # sending log via email
 #
 
-if ( $config['ccaddr'] !== '' ) {
- 	$toaddr = $toaddr ."," .$config['ccaddr'];
+if ( $dshield_config['ccaddr'] !== '' ) {
+ 	$toaddr = $toaddr ."," .$dshield_config['ccaddr'];
  }
 
 	$headers = array(
