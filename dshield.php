@@ -22,6 +22,12 @@
 
 $version='0.000006';
 
+# include some standard libraries
+require_once("globals.inc");
+require_once("functions.inc");
+require_once("filter.inc"); // In pfSense 2.5, filter_log.inc was renamed to filter.inc
+
+
 $config=parse_ini_file("dshield.ini",true);
 $config=$config['dshield'];
 
@@ -102,11 +108,6 @@ if ($config['target_port_exclude']) {
   load_excludes($config['target_port_exclude'], $tgt_port_exc_lo, $tgt_port_exc_hi, False);
 }
 
-
-# include some standard libraries
-require_once("globals.inc");
-require_once("functions.inc");
-require_once("filter.inc"); // In pfSense 2.5, filter_log.inc was renamed to filter.inc
 
 # figure out local timezone
 $sTZ=date('P');
