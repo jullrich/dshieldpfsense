@@ -46,16 +46,16 @@ if ( $dshield_config['apikey'] == '' ) {
   $apikey=$dshield_config['apikey'];
 }
 
-if ( $dshield_config['fromaddr'] == '' ) {
-  print "A 'From Address' is required. Check dshield.ini\n";
-  exit();
-}
-
 if ($dshield_config['fromaddr'] == '' ) {
   $from = $config['notifications']['smtp']['fromaddress'];
 } else {
   $from = $dshield_config['fromaddr'];
 }
+if ( $from == '' ) {
+  print "A 'From Address' is required. Check dshield.ini\n";
+  exit();
+}
+
 # some older versions used userid instead of uid. allowing for both.
 if ( $dshield_config['uid'] == '' && $dshield_config['userid'] == '' ) {
   print "A DShield UID is required. Check dshield.ini\n";
